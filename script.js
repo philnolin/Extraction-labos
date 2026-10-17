@@ -620,6 +620,14 @@ function extraireProlactine(texte) {
         extractValue(texte, /Prolactine\s+(?:[HLBA]\s*)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+(?:(?:<=|>=)?\s*[\d,. -]+\s+)?[uµμ]g\/L/i);
 }
 
+function extraireSyphilis(texte) {
+    const match = texte.match(/(?:^|\r?\n)\s*Syphilis\b[^\r\n]*(?:\r?\n\s*Nature du prélèvement:[^\r\n]*)?\r?\n\s*Résultat\s*:\s*([^\r\n]+)/i);
+    if (!match || !match[1]) return null;
+
+    const resultat = match[1].trim();
+    return /^non\s+r[ée]actif(?:ve)?\b/i.test(resultat) ? "-" : resultat;
+}
+
 /* AJOUT : format "Testostérone nmol/L AUTOVAH52,2 2026/..." (valeur collée
    directement après AUTOV + drapeau, sans espace) rencontré dans ce rapport,
    en plus du format CISSS inversé déjà géré et du format valeur-avant-unité. */
@@ -1773,7 +1781,7 @@ function extraireCultureUrinaireComplete(texte) {
         if (res.resistants.length > 0) parties.push(`Résistant à ${res.resistants.join(", ")}`);
 
         if (parties.length > 0) {
-            lignesResume.push(`${nomAffiche}: ${parties.join(". ")}`);
+            lignesResume.push(`${nomAffiche}:\n${parties.map(partie => `${partie}.`).join("\n")}`);
         } else {
             lignesResume.push(`${nomAffiche}`);
         }
@@ -1781,7 +1789,7 @@ function extraireCultureUrinaireComplete(texte) {
 
     if (lignesResume.length === 0) return null;
 
-    const resume = lignesResume.join("\n");
+    const resume = lignesResume.join("\n\n");
 
     return { type: "culture", date: dateCulture, texte: resume };
 }
@@ -2024,6 +2032,7 @@ Hb: extraireHb(texte) ||
     extractValue(texte, /(?:Hb|H[ée]moglobine)\s+(\d+)\s/i),
 Plaq: extraire(texte, /Plaq\.?\s+(\d+)\s+10\*9\/L/i) ||
       extraire(texte, /Plaq\s+10\*9\/L\s+AUTOV[AB]*\s*(\d+)/i) ||
+      extraire(texte, /Plaq\.?\s+(\d+)\s+\d+(?:[.,]\d+)?\s*-\s*\d+(?:[.,]\d+)?\s+10\*9\/L/i) ||
       extraire(texte, /^Plaquettes\s+(\d+)\s+\d+-\d+/im) ||
       extraire(texte, /(\d+)\s+\d+-\d+\s*x\s*10\^9\/L\s+L\s*$/im) ||
       extraire(texte, /Plaq\s+10\*9\/L.*?\s*(\d+)/i),
@@ -2073,6 +2082,8 @@ LpA: extraireLpA(texte),
         TSH: extraireFormatCisssInverse(texte, "TSH", "mU[I]?\\/L") ||
             extraireParUnite(texte, "(?:Thyréostimuline\\s*\\(TSH\\)|TSH)", "mUI\\/L", /TSH\s+(\d+[.,]\d+|\d+)\s/i, fb("(?:Thyréostimuline\\s*\\(TSH\\)|TSH)", "mUI\\/L")) ||
             extraireFormatCompactRef(texte, "(?:Thyréostimuline\\s*\\(TSH\\)|TSH)", "mUI\\/L"),
+        FSH: extractValue(texte, /\bFSH\s+(?:[HLBA]\s*)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+UI\/L/i),
+        LH: extractValue(texte, /\bLH\s+(?:[HLBA]\s*)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+UI\/L/i),
         T4L: extraireParUnite(texte, "(?:Thyroxine\\s*libre\\s*\\(T4\\)|T4\\s*libre|T4 LIBRE)", "pmol\\/L", /T4 LIBRE\s+(\d+[.,]\d+|\d+)\s/i) ||
              extractValue(texte, /pmol\/L\s*(\d+)\s+\d+-\d+\s*T4 LIBRE/i) ||
              extractValue(texte, /(\d+)\s+\d+-\d+\s*T4 LIBRE/i),
@@ -2097,6 +2108,7 @@ LpA: extraireLpA(texte),
         SHBG: extraireSHBG(texte),
         BNP: extraireBNP(texte),
         NTproBNP: extraireNTproBNP(texte),
+        Syphilis: extraireSyphilis(texte),
         PTH: extrairePTH(texte),
         PSA: extrairePSA(texte),
                 Li: extraireLiStrict(texte),
@@ -2138,37 +2150,29 @@ function formaterDVE(val) {
 }
 
 function formaterResultat(date, valeurs, heure, cultureComplete) {
-        const ordre = [
-        "Hb", "Plaq","VGM", "DVE", "INR", "Créat", "DFGe", "Urée", "Na", "K", "Cl", "HCO3", "Pi", "Mg",
-        "Alb", "Pré-alb", "Ca", "Ca (corr.)", "Ca ion. pH", "Ca ionisé", "Ac. urique",
-        "BiliT", "ALT", "AST", "CK", "GGT", "LDH", "PAL", "Lipase", "CRP",
-        "CT", "TG", "HDL", "LDL", "non-HDL", "ApoB", "LpA",
-                "TSH", "T4L", "T3T", "Prolactine", "TestT", "DHEA", "Estradiol", "SHBG", "Vit. B12", "Vit. D", "HbA1c", "Fructosamine", "RAC",
-                                "Ferritine", "TSAT", "BNP", "NTproBNP", "PTH", "PSA", "CTX", "Li", "Osmolalité sérique", "Proteinurie"
+    const groupes = [
+        ["Hb", "Plaq", "VGM", "DVE", "INR", "Créat", "DFGe", "Urée", "Na", "K", "Cl", "Osmolalité sérique","HCO3", "Pi", "Mg", "Alb", "Pré-alb", "Ca", "Ca (corr.)", "Ca ion. pH", "Ca ionisé", "CTX", "PTH"],
+        ["BiliT", "ALT", "AST", "CK", "GGT", "LDH", "PAL", "Lipase", "CRP"],
+        ["CT", "TG", "HDL", "LDL", "non-HDL", "ApoB", "LpA"],
+        ["TSH", "FSH", "LH", "T4L", "T3T", "Prolactine", "TestT", "DHEA", "Estradiol", "SHBG","Ferritine", "TSAT","Vit. B12", "Vit. D","HbA1c", "Fructosamine", "RAC", "Proteinurie","Ac. urique","BNP", "NTproBNP", "PSA", "Li"],
+        ["Syphilis"]
     ];
 
-    const resultatsFormates = [];
+    const resultats = groupes
+        .map(groupe => groupe
+            .map(param => {
+                const val = valeurs[param];
+                if (val === null || val === undefined || !String(val).trim()) return null;
 
-    for (const param of ordre) {
-        const val = valeurs[param];
-        if (val === null || val === undefined || !String(val).trim()) continue;
-
-        const affichage = param === "DVE" ? formaterDVE(String(val)) : String(val);
-
-        if (param === "Li" && heure) {
-            resultatsFormates.push({ param, texte: `${param} ${affichage} à ${heure}` });
-        } else {
-            resultatsFormates.push({ param, texte: `${param} ${affichage}` });
-        }
-    }
-
-    const parametresFinDeLigne = new Set(["Cl", "Ac. urique", "CRP", "LpA", "SHBG"]);
-    const resultats = resultatsFormates.reduce((texte, resultat, index) => {
-        if (index === 0) return resultat.texte;
-
-        const separateur = parametresFinDeLigne.has(resultatsFormates[index - 1].param) ? "\n" : ", ";
-        return `${texte}${separateur}${resultat.texte}`;
-    }, "");
+                const affichage = param === "DVE" ? formaterDVE(String(val)) : String(val);
+                return param === "Li" && heure
+                    ? `${param} ${affichage} à ${heure}`
+                    : `${param} ${affichage}`;
+            })
+            .filter(Boolean)
+            .join(", "))
+        .filter(Boolean)
+        .join(",\n");
     let res = `(${date}):\n${resultats}`;
 
     if (cultureComplete?.texte) {
