@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Extraction de laboratoires</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+<div class="page">
+  <section class="card">
+    <h1>Extraction de laboratoires</h1>
+    <p class="intro">Colle le rapport brut, puis clique sur le bouton pour extraire les valeurs.</p>
+
+    <label for="inputRapport">Rapport</label>
+    <textarea id="inputRapport" placeholder="Colle ici le rapport de laboratoire..."></textarea>
+
+    <div class="actions">
+      <button id="btnExtraire" type="button">Extraire</button>
+    </div>
+
+    <label for="resultats">Résultat</label>
+    <pre id="resultats" aria-live="polite"></pre>
+  </section>
+</div>
+</body>
+</html>
