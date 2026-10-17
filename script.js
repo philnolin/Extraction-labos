@@ -2156,16 +2156,23 @@ function formaterResultat(date, valeurs, heure, cultureComplete) {
         const affichage = param === "DVE" ? formaterDVE(String(val)) : String(val);
 
         if (param === "Li" && heure) {
-            resultatsFormates.push(`${param} ${affichage} à ${heure}`);
+            resultatsFormates.push({ param, texte: `${param} ${affichage} à ${heure}` });
         } else {
-            resultatsFormates.push(`${param} ${affichage}`);
+            resultatsFormates.push({ param, texte: `${param} ${affichage}` });
         }
     }
 
-    let res = `(${date}) :\n${resultatsFormates.join(", ")}`;
+    const parametresFinDeLigne = new Set(["Cl", "Ac. urique", "CRP", "LpA", "SHBG"]);
+    const resultats = resultatsFormates.reduce((texte, resultat, index) => {
+        if (index === 0) return resultat.texte;
 
-    if (cultureComplete && cultureComplete.texte) {
-        res += `\n${cultureComplete.texte}`;
+        const separateur = parametresFinDeLigne.has(resultatsFormates[index - 1].param) ? "\n" : ", ";
+        return `${texte}${separateur}${resultat.texte}`;
+    }, "");
+    let res = `(${date}):\n${resultats}`;
+
+    if (cultureComplete?.texte) {
+        res += `${resultats ? "\n" : ""}${cultureComplete.texte}`;
     }
 
     if (valeurs.Valproate) {
