@@ -2151,8 +2151,8 @@ function formaterDVE(val) {
 
 function formaterResultat(date, valeurs, heure, cultureComplete) {
     const groupes = [
-        ["Hb", "Plaq", "VGM", "DVE", "INR", "Créat", "DFGe", "Urée", "Na", "K", "Cl", "Osmolalité sérique","HCO3", "Pi", "Mg", "Alb", "Pré-alb", "Ca", "Ca (corr.)", "Ca ion. pH", "Ca ionisé", "CTX", "PTH"],
-        ["BiliT", "ALT", "AST", "CK", "GGT", "LDH", "PAL", "Lipase", "CRP"],
+        ["Hb", "Plaq", "VGM", "DVE", "INR", "Créat", "DFGe", "Urée", "Na", "K", "Cl", "Osmolalité sérique","HCO3", "Pi", "Mg", "Alb", "Pré-alb", "Ca", "Ca (corr.)", "Ca ion. pH", "Ca ionisé", "CTX", "PTH","ALT", "AST",],
+        ["BiliT", "CK", "GGT", "LDH", "PAL", "Lipase", "CRP"],
         ["CT", "TG", "HDL", "LDL", "non-HDL", "ApoB", "LpA"],
         ["TSH", "FSH", "LH", "T4L", "T3T", "Prolactine", "TestT", "DHEA", "Estradiol", "SHBG","Ferritine", "TSAT","Vit. B12", "Vit. D","HbA1c", "Fructosamine", "RAC", "Proteinurie","Ac. urique","BNP", "NTproBNP", "PSA", "Li"],
         ["Syphilis"]
