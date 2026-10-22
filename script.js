@@ -1761,6 +1761,11 @@ function extraireCultureUrinaireComplete(texte) {
         return { type: "contamination", texte: "Culture urinaire: Contamination" };
     }
 
+    // Absence de croissance (aucun organisme isolé)
+    if (/Absence\s+de\s+croissance/i.test(texte) && !/ORG#\s*0?\d/i.test(texte)) {
+        return { type: "absence", date: dateCulture, texte: "Culture urinaire: Absence de croissance" };
+    }
+
     const organismes = extraireOrganismesParNumero(texte);
     const antibiogramme = extraireTableauAntibiogramme(texte, organismes);
 
