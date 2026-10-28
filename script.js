@@ -2003,6 +2003,24 @@ function extraireProteinurie(texte) {
     return null;
 }
 
+function extrairePlaquettes(texte) {
+    const patterns = [
+        /Plaq\s*10\*9\/L\s+[A-Z]{2,}\d{4}(?:AB|AH|AN|CB|CH|XB|XH)?\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+(?=20\d{2}\/?)/i,
+        /Plaq\s*10\*9\/L\s+AUTO[VHBCAX\/]*\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+(?=20\d{2}\/?)/i,
+        /Plaq\.?\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+10\*9\/L\b/i,
+        /Plaq\.?\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+\d+(?:[.,]\d+)?\s*-\s*\d+(?:[.,]\d+)?\s+10\*9\/L\b/i,
+        /^Plaquettes\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+\d+(?:[.,]\d+)?-\d+(?:[.,]\d+)?/im,
+        /Plaq\s+10\*9\/L[^\n]*?([<>]?(?:=)?\d+(?:[.,]\d+)?)(?=\s+(?:20\d{2}\/?|$))/i
+    ];
+
+    for (const pattern of patterns) {
+        const match = texte.match(pattern);
+        if (match && match[1]) return normaliserValeur(match[1]);
+    }
+
+    return null;
+}
+
 function processRapport(texte) {
     texte = (texte || "").replace(/\b(AB|AH|AN|CB|CH|XB|XH)\b/g, "");
 
@@ -2035,12 +2053,7 @@ Hb: extraireHb(texte) ||
     extraireParUnite(texte, "Hb|Hémoglobine", "g\\/L", /(?:Hb|H[ée]moglobine)\s+(\d+)\s/i, fb("Hb|Hémoglobine", "g\\/L")) ||
     extraireFormatCompactRef(texte, "Hb|Hémoglobine", "g\\/L") ||
     extractValue(texte, /(?:Hb|H[ée]moglobine)\s+(\d+)\s/i),
-Plaq: extraire(texte, /Plaq\.?\s+(\d+)\s+10\*9\/L/i) ||
-      extraire(texte, /Plaq\s+10\*9\/L\s+AUTOV[AB]*\s*(\d+)/i) ||
-      extraire(texte, /Plaq\.?\s+(\d+)\s+\d+(?:[.,]\d+)?\s*-\s*\d+(?:[.,]\d+)?\s+10\*9\/L/i) ||
-      extraire(texte, /^Plaquettes\s+(\d+)\s+\d+-\d+/im) ||
-      extraire(texte, /(\d+)\s+\d+-\d+\s*x\s*10\^9\/L\s+L\s*$/im) ||
-      extraire(texte, /Plaq\s+10\*9\/L.*?\s*(\d+)/i),
+Plaq: extrairePlaquettes(texte),
 VGM: extraireVGM(texte),
         DVE: extraireDVE(texte),
         INR: extraireINR(texte) || extraireRNI(texte),
