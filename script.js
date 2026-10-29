@@ -766,7 +766,9 @@ function extraireTSAT(texte) {
         return extractValue(valeurInverse, /^([<>]?(?:=)?\d+(?:[.,]\d+)?)$/, { percentIfFraction: true });
     }
 
-    let m = texte.match(/Saturation\s+en\s+fer[^\n]*?AUTO[VHBCAX]*\s*([\d,.]+)/i);
+    // Format DSQ : "Saturation en fer 12 AB 15 - 50 % 2026/10/28 02:42 AUTOV IA440"
+    let m = texte.match(/Saturation\s+en\s+fer\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+(?:(?:AB|AH|AN|CB|CH|XB|XH|[BHAC])\s+)?\d+(?:[.,]\d+)?\s*-\s*\d+(?:[.,]\d+)?\s*%/i);
+    if (!m) m = texte.match(/Saturation\s+en\s+fer[^\n]*?AUTO[VHBCAX]*\s*([\d,.]+)/i);
     if (!m) m = texte.match(/Saturation\s+en\s+fer\s+([\d,.]+)\s*%/i);
     if (!m) m = texte.match(/SATURATION\s+FER\s+(?:[HLBA]\s*)?([<>]?(?:=)?\d+(?:[.,]\d+)?)(?:\s+(?:<=|>=)?\s*[\d,.]+\s*-\s*[\d,.]+)?/i);
     if (!m) m = texte.match(/Indice de saturation[^\n]*?AUTO[VHBCAX]*\s*([\d,.]+)/i);
