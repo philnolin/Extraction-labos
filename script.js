@@ -1167,13 +1167,17 @@ function extraireLipase(texte) {
 }
 
 function extraireCTX(texte) {
-    let m = texte.match(/C\s*Telopeptide\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)\s*ng\/ml/i);
+    // "C Telopeptide 0,45 ng/ml" ou "C-télopeptide du collagène 0,450 ug/L" (µg/L = ng/mL)
+    const nomCTX = "C\\s*-?\\s*T[eé]lop[eé]ptide(?:\\s+du\\s+collag[eè]ne)?";
+    const uniteCTX = "(?:ng\\/ml|[uµμ]g\\/L)";
+
+    let m = texte.match(new RegExp(nomCTX + "\\s+(?:[HLBA]\\s+)?([<>]?(?:=)?\\d+(?:[.,]\\d+)?)\\s*" + uniteCTX, "i"));
     if (m) return normaliserValeur(m[1]);
 
-    m = texte.match(/C\s*Telopeptide[^\n]*?AUTO[VHBCAX]*\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)/i);
+    m = texte.match(new RegExp(nomCTX + "[^\\n]*?AUTO[VHBCAX]*\\s*([<>]?(?:=)?\\d+(?:[.,]\\d+)?)", "i"));
     if (m) return normaliserValeur(m[1]);
 
-    return extraireParUnite(texte, "C\\s*Telopeptide", "ng\\/ml", /C\s*Telopeptide[^\d-]*([\d,.]+)/i, fb("C\\s*Telopeptide", "ng\\/ml"));
+    return extraireParUnite(texte, nomCTX, uniteCTX, new RegExp(nomCTX + "[^\\d-]*([\\d,.]+)", "i"), fb(nomCTX, uniteCTX));
 }
 
 function extraireNTproBNP(texte) {
