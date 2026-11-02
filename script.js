@@ -402,6 +402,10 @@ function extraireCT(texte) {
     let m = texte.match(/^\s*CHOLESTEROL\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+(?:[<>]?\s*[\d,. -]+)?\s*mmol\/L/im);
     if (m) return normaliserValeur(m[1]);
 
+    // Format DSQ sans unité : "Cholestérol 3,16 <6,20 2026/10/30 ..."
+    m = texte.match(/^\s*Cholest[ée]rol\s+(\d+[.,]\d+)\s+(?:[<>]=?\s*)?\d+(?:[.,]\d+)?(?:\s*-\s*\d+(?:[.,]\d+)?)?(?:\s*mmol\/L)?\s+20\d{2}\//im);
+    if (m) return normaliserValeur(m[1]);
+
     m = texte.match(/<=?\s*[\d,.]+\s*Cholest[ée]rol\s+mmol\/L\s+AUTO[VHBCAX]*\s*([\d,.]+)/i);
     if (m) return normaliserValeur(m[1]);
 
@@ -575,6 +579,8 @@ function extraireA1c(texte) {
 
                 const ligne = lignes[k].trim();
                 if (/Idéal|Optimal|Contrôle|Chef|Page|Rapport|Légende|^\s*$/i.test(ligne)) continue;
+                // Intervalles ou seuils de référence d'autres analyses (ex. "9 - 30", ">59")
+                if (/^>|^\d+(?:[.,]\d+)?\s*-\s*\d/.test(ligne)) continue;
 
                 const match = ligne.match(/^([<>]?(?:=)?\d+(?:[.,]\d+)?)(?:\s*[HLB])?(?:\s+\S+.*)?$/i);
                 if (match && match[1]) {
@@ -766,10 +772,10 @@ function extraireTSAT(texte) {
         return extractValue(valeurInverse, /^([<>]?(?:=)?\d+(?:[.,]\d+)?)$/, { percentIfFraction: true });
     }
 
-    // Format DSQ : "Saturation en fer 12 AB 15 - 50 % 2026/10/28 02:42 AUTOV IA440"
-    let m = texte.match(/Saturation\s+en\s+fer\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+(?:(?:AB|AH|AN|CB|CH|XB|XH|[BHAC])\s+)?\d+(?:[.,]\d+)?\s*-\s*\d+(?:[.,]\d+)?\s*%/i);
-    if (!m) m = texte.match(/Saturation\s+en\s+fer[^\n]*?AUTO[VHBCAX]*\s*([\d,.]+)/i);
+    let m = texte.match(/Saturation\s+en\s+fer[^\n]*?AUTO[VHBCAX]*\s*([\d,.]+)/i);
     if (!m) m = texte.match(/Saturation\s+en\s+fer\s+([\d,.]+)\s*%/i);
+    // Format DSQ : "Saturation en fer 27 15 - 50 %"
+    if (!m) m = texte.match(/Saturation\s+en\s+fer\s+(\d+(?:[.,]\d+)?)\s+\d+(?:[.,]\d+)?\s*-\s*\d+(?:[.,]\d+)?\s*%/i);
     if (!m) m = texte.match(/SATURATION\s+FER\s+(?:[HLBA]\s*)?([<>]?(?:=)?\d+(?:[.,]\d+)?)(?:\s+(?:<=|>=)?\s*[\d,.]+\s*-\s*[\d,.]+)?/i);
     if (!m) m = texte.match(/Indice de saturation[^\n]*?AUTO[VHBCAX]*\s*([\d,.]+)/i);
     if (!m) m = texte.match(/Indice de saturation[^\d-]*([\d,.]+)\s*%?/i);
@@ -807,6 +813,13 @@ function extraireLiStrict(texte) {
     // "Lithium 0,59 mmol/L"
     m = texte.match(
         /\bLithium\s+(?:[HLBA]\s*)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s*mmol\/L/i
+    );
+    if (m) return normaliserValeur(m[1]);
+
+    // Format CISSS-Chaudière-Appalaches (valeur, indicateur, plage de réf., unité) :
+    // "LITHIUM 0,48 0,40-1,00 mmol/L L" / "LITHIUM 1,25 H 0,40-1,00 mmol/L L"
+    m = texte.match(
+        /\bLithium\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+(?:[HLBAP]\s+)?[\d,.]+\s*-\s*[\d,.]+\s*mmol\/L/i
     );
     if (m) return normaliserValeur(m[1]);
 
@@ -951,7 +964,7 @@ function extraireVitB12(texte) {
         /VITAMINE B-12[\s\S]{0,500}(\d+[.,]?\d*)\s*pmol\/L/i,
         /Vitamine B12\s+pmol\/L[^\n]*?AUTO[VHBCAX]*\s*([\d,.]+)/i,
         /Vitamine B12\s+pmol\/L[^\n]*?[A-Z]{3,}[A-Z0-9]*?(?:AB|AH|AN|CB|CH|XB|XH)?\s*([\d]{2,5}(?:[.,]\d+)?)/i,
-        /Vitamine B12\s+([\d,.]+)\s+(?:<=|>=)?\s*[\d,. -]+\s*pmol\/L/i,
+        /Vitamine B12\s+([\d,.]+)\s+(?:[<>]=?)?\s*[\d,. -]+\s*pmol\/L/i,
         /Vitamine B12[^\d-]*([\d,.]+)\s*pmol\/L/i
     ];
 
@@ -1014,7 +1027,8 @@ function extraireCaIonise(texte) {
     m = texte.match(/CALCIUM IONIS[ÉE]\s+MESUR[ÉE][\s\S]{0,120}?Calcium ionis[ée]\s+(\d+[.,]\d+|\d+)/i);
     if (m) return normaliserValeur(m[1]);
 
-    m = texte.match(/Calcium\s+ion(?:is[ée])?\s+pH\s*7[,\.]4\s+([\d]+[.,]\d+)\s*mmol\/L/i);
+    // Format DSQ : "Calcium ion pH 7,4 1,18 1,14 - 1,32 mmol/L" (indicateur et intervalle de réf. optionnels)
+    m = texte.match(/Calcium\s+ion(?:is[ée])?\s+pH\s*7[,\.]4\s+([\d]+[.,]\d+)\s*(?:(?:AB|AH|AN|CB|CH|XB|XH)\s+)?(?:\d+[.,]\d+\s*-\s*\d+[.,]\d+\s*)?mmol\/L/i);
     if (m) return normaliserValeur(m[1]);
 
     m = texte.match(/Calcium\s+ion(?:is[ée])?(?![^\n]*pH)[^\n]*?([\d]+[.,]\d+)\s*mmol\/L/i);
@@ -1167,17 +1181,13 @@ function extraireLipase(texte) {
 }
 
 function extraireCTX(texte) {
-    // "C Telopeptide 0,45 ng/ml" ou "C-télopeptide du collagène 0,450 ug/L" (µg/L = ng/mL)
-    const nomCTX = "C\\s*-?\\s*T[eé]lop[eé]ptide(?:\\s+du\\s+collag[eè]ne)?";
-    const uniteCTX = "(?:ng\\/ml|[uµμ]g\\/L)";
-
-    let m = texte.match(new RegExp(nomCTX + "\\s+(?:[HLBA]\\s+)?([<>]?(?:=)?\\d+(?:[.,]\\d+)?)\\s*" + uniteCTX, "i"));
+    let m = texte.match(/C\s*Telopeptide\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)\s*ng\/ml/i);
     if (m) return normaliserValeur(m[1]);
 
-    m = texte.match(new RegExp(nomCTX + "[^\\n]*?AUTO[VHBCAX]*\\s*([<>]?(?:=)?\\d+(?:[.,]\\d+)?)", "i"));
+    m = texte.match(/C\s*Telopeptide[^\n]*?AUTO[VHBCAX]*\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)/i);
     if (m) return normaliserValeur(m[1]);
 
-    return extraireParUnite(texte, nomCTX, uniteCTX, new RegExp(nomCTX + "[^\\d-]*([\\d,.]+)", "i"), fb(nomCTX, uniteCTX));
+    return extraireParUnite(texte, "C\\s*Telopeptide", "ng\\/ml", /C\s*Telopeptide[^\d-]*([\d,.]+)/i, fb("C\\s*Telopeptide", "ng\\/ml"));
 }
 
 function extraireNTproBNP(texte) {
@@ -2009,24 +2019,6 @@ function extraireProteinurie(texte) {
     return null;
 }
 
-function extrairePlaquettes(texte) {
-    const patterns = [
-        /Plaq\s*10\*9\/L\s+[A-Z]{2,}\d{4}(?:AB|AH|AN|CB|CH|XB|XH)?\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+(?=20\d{2}\/?)/i,
-        /Plaq\s*10\*9\/L\s+AUTO[VHBCAX\/]*\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+(?=20\d{2}\/?)/i,
-        /Plaq\.?\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+10\*9\/L\b/i,
-        /Plaq\.?\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+\d+(?:[.,]\d+)?\s*-\s*\d+(?:[.,]\d+)?\s+10\*9\/L\b/i,
-        /^Plaquettes\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+\d+(?:[.,]\d+)?-\d+(?:[.,]\d+)?/im,
-        /Plaq\s+10\*9\/L[^\n]*?([<>]?(?:=)?\d+(?:[.,]\d+)?)(?=\s+(?:20\d{2}\/?|$))/i
-    ];
-
-    for (const pattern of patterns) {
-        const match = texte.match(pattern);
-        if (match && match[1]) return normaliserValeur(match[1]);
-    }
-
-    return null;
-}
-
 function processRapport(texte) {
     texte = (texte || "").replace(/\b(AB|AH|AN|CB|CH|XB|XH)\b/g, "");
 
@@ -2059,7 +2051,12 @@ Hb: extraireHb(texte) ||
     extraireParUnite(texte, "Hb|Hémoglobine", "g\\/L", /(?:Hb|H[ée]moglobine)\s+(\d+)\s/i, fb("Hb|Hémoglobine", "g\\/L")) ||
     extraireFormatCompactRef(texte, "Hb|Hémoglobine", "g\\/L") ||
     extractValue(texte, /(?:Hb|H[ée]moglobine)\s+(\d+)\s/i),
-Plaq: extrairePlaquettes(texte),
+Plaq: extraire(texte, /Plaq\.?\s+(\d+)\s+10\*9\/L/i) ||
+      extraire(texte, /Plaq\s+10\*9\/L\s+AUTOV[AB]*\s*(\d+)/i) ||
+      extraire(texte, /Plaq\.?\s+(\d+)\s+\d+(?:[.,]\d+)?\s*-\s*\d+(?:[.,]\d+)?\s+10\*9\/L/i) ||
+      extraire(texte, /^Plaquettes\s+(\d+)\s+\d+-\d+/im) ||
+      extraire(texte, /(\d+)\s+\d+-\d+\s*x\s*10\^9\/L\s+L\s*$/im) ||
+      extraire(texte, /Plaq\s+10\*9\/L.*?\s*(\d+)/i),
 VGM: extraireVGM(texte),
         DVE: extraireDVE(texte),
         INR: extraireINR(texte) || extraireRNI(texte),
