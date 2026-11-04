@@ -869,7 +869,7 @@ function extraireMg(texte) {
 }
 
 function extraireAlbumine(texte) {
-    const valeurInverse = extraireFormatCisssInverse(texte, "ALBUMINE|Albumine", "g\\/L");
+    const valeurInverse = extraireFormatCisssInverse(texte, "(?<![A-Za-zÀ-ÿ-])(?:ALBUMINE|Albumine)", "g\\/L");
     if (valeurInverse) return valeurInverse;
 
     let matchCompact = texte.match(/Albumine\s+g\/L\s+[A-Z]{2,}\d{4}(?:AB|AH|AN|CB|CH|XB|XH)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+20\d{2}\//i);
@@ -1189,7 +1189,9 @@ function extrairePhosphataseAlcaline(texte) {
 }
 
 function extraireLDH(texte) {
-    return extractValue(texte, /Lactate d[ée]shydrog[ée]nase\s+U\/L\s+AUTO[VHBCAX]*\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)/i) ||
+    // Format CISSS-CA inverse : "LU/L175 0-225LD (LDH)"
+    return extraireFormatCisssInverse(texte, "LD\\s*\\(LDH\\)|LDH|Lactate d[ée]shydrog[ée]nase", "U\\/L") ||
+        extractValue(texte, /Lactate d[ée]shydrog[ée]nase\s+U\/L\s+AUTO[VHBCAX]*\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)/i) ||
         extraireValeurSurLigne(texte, "Lactate d[ée]shydrog[ée]nase(?:\\s*\\(LDH\\))?|LD\\s*\\(LDH\\)", "U\\/L") ||
         extraireParUnite(texte, "Lactate d[ée]shydrog[ée]nase(?:\\s*\\(LDH\\))?|LD\\s*\\(LDH\\)", "U\\/L", /LD\s+\(LDH\)\s+(\d+)\s/i, fb("Lactate d[ée]shydrog[ée]nase|LD\\s*\\(LDH\\)", "U\\/L")) ||
         extractValue(texte, /Lactate d[ée]shydrog[ée]nase\s+(?:[HLBA]\s*)?(\d+[.,]\d+|\d+)\s*U\/L/i);
@@ -2100,7 +2102,8 @@ VGM: extraireVGM(texte),
         Pi: extrairePhosphate(texte),
         Mg: extraireMg(texte),
         Alb: albumine,
-        "Pré-alb": extraireParUnite(texte, "Pr[ée]-albumine", "mg\\/L", /Pr[ée]-albumine[^\d-]*([\d,.]+)\s*mg\/L/i, fb("Pr[ée]-albumine", "mg\\/L")),
+        // Format CISSS-CA inverse : "Lmg/L260 180-380PREALBUMINE"
+        "Pré-alb": extraireFormatCisssInverse(texte, "PR[ÉEée]-?ALBUMINE", "mg\\/L") || extraireParUnite(texte, "Pr[ée]-albumine", "mg\\/L", /Pr[ée]-albumine[^\d-]*([\d,.]+)\s*mg\/L/i, fb("Pr[ée]-albumine", "mg\\/L")),
         Ca: calciumTotal,
         "Ca (corr.)": null,
         "Ca ion. pH": caIonCorrigePh,
