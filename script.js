@@ -290,6 +290,22 @@ function extraireHb(texte) {
     return null;
 }
 
+function extrairePlaquettes(texte) {
+    const formatCisssInverse = texte.match(
+        /(?:^|\n)\s*[A-Z]?\s*x\s*10\^9\/L\s*(\d+)\s+\d+(?:[.,]\d+)?\s*-\s*\d+(?:[.,]\d+)?\s*Plaquettes\b/im
+    );
+    if (formatCisssInverse && formatCisssInverse[1]) {
+        return normaliserValeur(formatCisssInverse[1]);
+    }
+
+    return extraire(texte, /Plaq\.?\s+(\d+)\s+10\*9\/L/i) ||
+        extraire(texte, /Plaq\s+10\*9\/L\s+AUTOV[AB]*\s*(\d+)/i) ||
+        extraire(texte, /Plaq\.?\s+(\d+)\s+\d+(?:[.,]\d+)?\s*-\s*\d+(?:[.,]\d+)?\s+10\*9\/L/i) ||
+        extraire(texte, /^Plaquettes\s+(\d+)\s+\d+-\d+/im) ||
+        extraire(texte, /(\d+)\s+\d+-\d+\s*x\s*10\^9\/L\s+L\s*$/im) ||
+        extraire(texte, /Plaq\s+10\*9\/L.*?\s*(\d+)/i);
+}
+
 function extraireVGM(texte) {
     const patterns = [
         // Format avec plage de référence collée avant VGM (ex: "80,0 - 100,0VGM fL AUTOV96,9")
@@ -558,6 +574,13 @@ function extraireA1c(texte) {
     // la fructosamine (si présente) fournir l'estimation via processRapport.
     if (/HbA1c\s+non\s+mesurable|HbA1c[^\n]*non\s+mesurable/i.test(texte)) {
         return null;
+    }
+
+    const formatCisssInverse = texte.match(
+        /(?:^|\n)\s*[LHBA]?\s*(\d+[.,]\d+)\s*(?:Contrôle|Idéal|Optimal)\s*:[\s\S]{0,250}?HbA1C\b/im
+    );
+    if (formatCisssInverse && formatCisssInverse[1]) {
+        return extractValue(formatCisssInverse[1], /^(\d+[.,]\d+)$/, { percentIfFraction: true });
     }
 
     let m = texte.match(/HBA1c\s*[HB]?\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)/i);
@@ -928,6 +951,13 @@ function extraireVitB12(texte) {
     if (m && m[1] && m[2]) {
         const valeur = m[2].replace(/[\s\u00A0]/g, "").replace(",", ".");
         return `${m[1]}${valeur}`;
+    }
+
+    const formatCisssInverse = texte.match(
+        /(?:^|\n)\s*[A-Z]\s*pmol\/L\s*(\d+(?:[.,]\d+)?)[\s\S]{0,500}?VITAMINE B-?12\b/i
+    );
+    if (formatCisssInverse && formatCisssInverse[1]) {
+        return normaliserValeur(formatCisssInverse[1]);
     }
 
     let matchInverse = texte.match(/>=?\s*[\d,.]+\s*Vitamine B12\s+pmol\/L\s+AUTO[VHBCAX]*\s*([\d,.]+)/i);
@@ -2051,12 +2081,7 @@ Hb: extraireHb(texte) ||
     extraireParUnite(texte, "Hb|Hémoglobine", "g\\/L", /(?:Hb|H[ée]moglobine)\s+(\d+)\s/i, fb("Hb|Hémoglobine", "g\\/L")) ||
     extraireFormatCompactRef(texte, "Hb|Hémoglobine", "g\\/L") ||
     extractValue(texte, /(?:Hb|H[ée]moglobine)\s+(\d+)\s/i),
-Plaq: extraire(texte, /Plaq\.?\s+(\d+)\s+10\*9\/L/i) ||
-      extraire(texte, /Plaq\s+10\*9\/L\s+AUTOV[AB]*\s*(\d+)/i) ||
-      extraire(texte, /Plaq\.?\s+(\d+)\s+\d+(?:[.,]\d+)?\s*-\s*\d+(?:[.,]\d+)?\s+10\*9\/L/i) ||
-      extraire(texte, /^Plaquettes\s+(\d+)\s+\d+-\d+/im) ||
-      extraire(texte, /(\d+)\s+\d+-\d+\s*x\s*10\^9\/L\s+L\s*$/im) ||
-      extraire(texte, /Plaq\s+10\*9\/L.*?\s*(\d+)/i),
+Plaq: extrairePlaquettes(texte),
 VGM: extraireVGM(texte),
         DVE: extraireDVE(texte),
         INR: extraireINR(texte) || extraireRNI(texte),
