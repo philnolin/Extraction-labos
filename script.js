@@ -51,7 +51,8 @@ function extractValue(text, pattern, options = {}) {
             isFraction = true;
         }
         const fixedValue = isFraction || value % 1 !== 0 ? value.toFixed(1) : value.toFixed(0);
-        return `${fixedValue}%`;
+        const comparateur = hasComparator ? match[1].trim().match(/^[<>]=?/)[0] : "";
+        return `${comparateur}${fixedValue}%`;
     }
 
     if (percentage) {
@@ -583,7 +584,8 @@ function extraireA1c(texte) {
         return extractValue(formatCisssInverse[1], /^(\d+[.,]\d+)$/, { percentIfFraction: true });
     }
 
-    let m = texte.match(/HBA1c\s*[HB]?\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)/i);
+    // "HbA1c > 14,0 AH %" : comparateur séparé de la valeur par un espace
+    let m = texte.match(/HBA1c\s*[HB]?\s*([<>]\s*=?\s*\d+(?:[.,]\d+)?|\d+(?:[.,]\d+)?)/i);
     if (!m) m = texte.match(/HbA1c\s+%[^\n]*?AUTO[VHBCAX]*\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)/i);
     if (!m) m = texte.match(/HbA1c\s+[^\n]*?AUTO[VHBCAX]*\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)/i);
     if (!m) m = texte.match(/HbA1c\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+[\d,. -]+\s*%/i);
@@ -650,7 +652,9 @@ function extraireProlactine(texte) {
 }
 
 function extraireSyphilis(texte) {
-    const match = texte.match(/(?:^|\r?\n)\s*Syphilis\b[^\r\n]*(?:\r?\n\s*Nature du prélèvement:[^\r\n]*)?\r?\n\s*Résultat\s*:\s*([^\r\n]+)/i);
+    let match = texte.match(/(?:^|\r?\n)\s*Syphilis\b[^\r\n]*(?:\r?\n\s*Nature du prélèvement:[^\r\n]*)?\r?\n\s*Résultat\s*:\s*([^\r\n]+)/i);
+    // Format DSQ sur une ligne : "Syphilis, Ac; IA Non réactif 2026/11/03 13:47 V/AUT IA440"
+    if (!match) match = texte.match(/(?:^|\r?\n)\s*Syphilis\s*,\s*Ac\s*;\s*\S+\s+((?:Non\s+)?r[ée]actif(?:ve)?|[ée]quivoque|ind[ée]termin[ée]e?)\b/i);
     if (!match || !match[1]) return null;
 
     const resultat = match[1].trim();
