@@ -1462,7 +1462,9 @@ function normaliserOrganisme(nom) {
         "Citrobacter freundii": "C. freundii",
         "Klebsiella oxytoca": "K. oxytoca",
         "Serratia marcescens": "S. marcescens",
-        "Morganella morganii": "M. morganii"
+        "Morganella morganii": "M. morganii",
+        "Aerococcus urinae": "A. urinae",
+        "Aerococcus sanguinicola": "A. sanguinicola"
     };
 
     return map[nom] || nom;
@@ -1646,6 +1648,7 @@ function groupeOrganisme(nom) {
     if (/enterococcus|e\.\s*faecalis|e\.\s*faecium/.test(n)) return "enterocoque";
     if (/staphylococcus|s\.\s*aureus|s\.\s*saprophyticus|s\.\s*epidermidis/.test(n)) return "staphylocoque";
     if (/streptococcus|s\.\s*agalactiae/.test(n)) return "streptocoque";
+    if (/aerococcus|a\.\s*urinae|a\.\s*sanguinicola/.test(n)) return "aerocoque";
     if (/pseudomonas|p\.\s*aeruginosa/.test(n)) return "pseudomonas";
     if (/escherichia|e\.\s*coli/.test(n)) return "ecoli";
     if (/klebsiella|k\.\s*pneumoniae|k\.\s*oxytoca/.test(n)) return "klebsiella";
@@ -1664,18 +1667,18 @@ function groupesTestesPourAntibiotique(antibiotique) {
     const table = {
         "Nitrofurantoïne": ["enterocoque", "staphylocoque", "ecoli", "klebsiella", "enterobacterie"],
         "Fosfomycine": ["ecoli"],
-        "Pénicilline": ["enterocoque", "staphylocoque", "streptocoque"],
+        "Pénicilline": ["enterocoque", "staphylocoque", "streptocoque", "aerocoque"],
         "Amoxicilline": ["enterocoque", "ecoli", "proteus", "streptocoque"],
         "Amoxicilline-clavulanate": entero.concat(["staphylocoque"]),
         "Ampicilline": entero.concat(["enterocoque"]),
-        "Vancomycine": ["enterocoque", "staphylocoque", "streptocoque"],
-        "TMP-SMX": entero.concat(["staphylocoque"]),
+        "Vancomycine": ["enterocoque", "staphylocoque", "streptocoque", "aerocoque"],
+        "TMP-SMX": entero.concat(["staphylocoque", "aerocoque"]),
         "Céphalexine": entero,
         "Céfalexine": entero,
         "Céfuroxime": entero,
         "Cefixime": entero,
         "Céfixime": entero,
-        "Ceftriaxone": entero,
+        "Ceftriaxone": entero.concat(["aerocoque"]),
         "Ceftazidime": entero.concat(["pseudomonas"]),
         "Céfépime": entero.concat(["pseudomonas"]),
         "Pip-tazo": entero.concat(["pseudomonas"]),
@@ -1686,7 +1689,7 @@ function groupesTestesPourAntibiotique(antibiotique) {
         "Méropénème": entero.concat(["pseudomonas"]),
         "Gentamicine": entero.concat(["pseudomonas", "staphylocoque"]),
         "Tobramycine": entero.concat(["pseudomonas"]),
-        "Ciprofloxacine": entero.concat(["pseudomonas"])
+        "Ciprofloxacine": entero.concat(["pseudomonas", "aerocoque"])
     };
 
     return table[antibiotique] || null;
@@ -1737,6 +1740,12 @@ function extraireTableauAntibiogramme(texte, organismes = {}) {
                     const orgNo = orgsParColonne[idx] || String(idx + 1).padStart(2, "0");
                     ajouter(orgNo, s.statut, ligne.nom);
                 });
+                continue;
+            }
+
+            // Un statut par organisme: l'ordre des colonnes suffit.
+            if (ligne.statuts.length === entetes.length) {
+                ligne.statuts.forEach((s, i) => ajouter(entetes[i].no, s.statut, ligne.nom));
                 continue;
             }
 
@@ -2051,8 +2060,46 @@ function extraireProteinurie(texte) {
     return null;
 }
 
+/* Format CISSS-CA: la section "BIOCHIMIE URINE" contient des analyses urinaires
+   (ex. "SODIUM 122 27-147 mmol/L") qui ne doivent pas être lues comme sériques.
+   Retourne la section urinaire et le reste du rapport. */
+function separerSectionUrine(texte) {
+    const lignes = texte.split(/\r?\n/);
+    const urine = [];
+    const reste = [];
+    let dansUrine = false;
+
+    for (const ligne of lignes) {
+        if (/^\s*BIOCHIMIE\s+URINE\b/i.test(ligne)) {
+            dansUrine = true;
+            continue;
+        }
+        if (dansUrine && /^\s*(?:BIOCHIMIE|H[ÉE]MATOLOGIE|MICROBIOLOGIE|COAGULATION|S[ÉE]ROLOGIE|Sp[ée]cimen)\b|^\s*L\s*=\s*L[ée]vis/i.test(ligne)) {
+            dansUrine = false;
+        }
+        (dansUrine ? urine : reste).push(ligne);
+    }
+
+    return { urine: urine.join("\n"), reste: reste.join("\n") };
+}
+
+function extraireNaUrinaire(texteUrine) {
+    const m = texteUrine.match(/^\s*SODIUM\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)/im);
+    return m ? normaliserValeur(m[1]) : null;
+}
+
+function extraireOsmolaliteUrinaire(texte) {
+    const m = texte.match(/OSMOLALIT[ÉE]\s+URINAIRE(?:\s+MICTION)?\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)/i);
+    return m ? normaliserValeur(m[1]) : null;
+}
+
 function processRapport(texte) {
     texte = (texte || "").replace(/\b(AB|AH|AN|CB|CH|XB|XH)\b/g, "");
+
+    const sectionUrine = separerSectionUrine(texte);
+    const naUrinaire = extraireNaUrinaire(sectionUrine.urine);
+    const osmolaliteUrinaire = extraireOsmolaliteUrinaire(texte);
+    texte = sectionUrine.reste;
 
     // Supprime les flags B/H/A isolés qui suivent une valeur numérique (ex: "539 H 37-300" → "539 37-300")
     // Ces flags indiquent "Bas" ou "Haut" mais ne font pas partie de la valeur.
@@ -2162,6 +2209,8 @@ LpA: extraireLpA(texte),
         PSA: extrairePSA(texte),
                 Li: extraireLiStrict(texte),
         "Osmolalité sérique": extraireOsmolalite(texte),
+        "Osmolalité urinaire": osmolaliteUrinaire,
+        NaUrinaire: naUrinaire,
         Valproate: extraireValproate(texte)
     };
    
@@ -2200,7 +2249,7 @@ function formaterDVE(val) {
 
 function formaterResultat(date, valeurs, heure, cultureComplete) {
     const groupes = [
-        ["Hb", "Plaq", "VGM", "DVE", "INR", "Créat", "DFGe", "Urée", "Na", "K", "Cl", "Osmolalité sérique","HCO3", "Pi", "Mg", "Alb", "Pré-alb", "Ca", "Ca (corr.)", "Ca ion. pH", "Ca ionisé", "CTX", "PTH","ALT", "AST",],
+        ["Hb", "Plaq", "VGM", "DVE", "INR", "Créat", "DFGe", "Urée", "Na", "K", "Cl", "Osmolalité sérique", "Osmolalité urinaire", "NaUrinaire", "HCO3", "Pi", "Mg", "Alb", "Pré-alb", "Ca", "Ca (corr.)", "Ca ion. pH", "Ca ionisé", "CTX", "PTH","ALT", "AST",],
         ["BiliT", "CK", "GGT", "LDH", "PAL", "Lipase", "CRP"],
         ["CT", "TG", "HDL", "LDL", "non-HDL", "ApoB", "LpA"],
         ["TSH", "FSH", "LH", "T4L", "T3T", "Prolactine", "TestT", "DHEA", "Estradiol", "SHBG","Ferritine", "TSAT","Vit. B12", "Vit. D","HbA1c", "Fructosamine", "RAC", "Proteinurie","Ac. urique","BNP", "NTproBNP", "PSA", "Li"],
