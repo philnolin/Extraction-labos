@@ -1827,6 +1827,11 @@ function extraireCultureUrinaireComplete(texte) {
         return { type: "absence", date: dateCulture, texte: "Culture urinaire: Absence de croissance" };
     }
 
+    // "Culture négative <10e6 UFC/L"
+    if (/Culture\s+n[ée]gative/i.test(texte) && !/ORG#\s*0?\d/i.test(texte)) {
+        return { type: "negative", date: dateCulture, texte: "Culture urinaire: Négative" };
+    }
+
     const organismes = extraireOrganismesParNumero(texte);
     const antibiogramme = extraireTableauAntibiogramme(texte, organismes);
 
