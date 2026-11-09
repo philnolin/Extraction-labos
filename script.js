@@ -727,6 +727,12 @@ function extractRacValue(text) {
 function extraireRAC(texte) {
     if (/Impossibilit[ée] d'effectuer le calcul/i.test(texte) &&
         /Microalbumine\/Cr[ée]at|Microalbumine\/Cr[ée]at; Ur|Microalbumine\/Créat/i.test(texte)) {
+        // Calcul impossible parce que la microalbumine dépasse la limite supérieure
+        // de la méthode (ex. "Microalbumine; Ur > 500,0 AH mg/L") : ce n'est pas négatif.
+        const microalbHaute = texte.match(/Microalbumine\s*;\s*Ur[^\n]*?>\s*(\d+(?:[.,]\d+)?)/i);
+        if (microalbHaute) {
+            return `impossible (microalb >${normaliserValeur(microalbHaute[1]).replace(/\.0+$/, "")})`;
+        }
         return "négatif";
     }
 
@@ -2060,6 +2066,10 @@ function extraireProteinurie(texte) {
 
     // Format DSQ : "Ratio protéine/créatinine 0,019"
     m = texte.match(/Ratio\s+prot[ée]ine\/cr[ée]at(?:inine)?\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)/i);
+    if (m) return `+ (${normaliserValeur(m[1])})`;
+
+    // Format DSQ en colonnes décalées : "Prot/Créat; Ur 0,000 - 0,015 g/mmol\ncreat\n0,446 AH ..."
+    m = texte.match(/Prot\/Cr[ée]at\s*;\s*Ur\s+\d+(?:[.,]\d+)?\s*-\s*\d+(?:[.,]\d+)?\s*g\/mmol\s+creat\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)/i);
     if (m) return `+ (${normaliserValeur(m[1])})`;
 
     // Format avec protéines urinaires seules (ex: "Protéines urinaires 0,15 g/L")
