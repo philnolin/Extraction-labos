@@ -1306,7 +1306,16 @@ function extraireCRP(texte) {
     m = texte.match(/\bCRP\b\s*(?:[HLBA]\s*)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s*mg\/L/i);
     if (m) return normaliserValeur(m[1]);
 
+    // Format CISSS-CA : "Protéine C réactive; Sensibilité élevée ... 117,3 AH mg/L"
+    m = texte.match(/Prot[ée]ine C r[ée]active;?\s*Sensibilit[ée][\s\S]{0,80}?(?:^|\s)([<>]?(?:=)?\d+(?:[.,]\d+)?)\s*(?:AH|AB|AN|CH|CB|XH|XB)?\s*mg\/L/im);
+    if (m) return normaliserValeur(m[1]);
+
     return null;
+}
+
+function extrairePCT(texte) {
+    const m = texte.match(/Procalcitonine\s*(?:AH|AB|AN|CH|CB|XH|XB)?\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)\s*(?:AH|AB|AN|CH|CB|XH|XB)?\s*[uµμ]g\/L/i);
+    return m ? normaliserValeur(m[1]) : null;
 }
 
 function extraireGlucose(texte) {
@@ -2186,6 +2195,7 @@ VGM: extraireVGM(texte),
         Lipase: extraireLipase(texte),
       CTX: extraireCTX(texte),
         CRP: extraireCRP(texte),
+        PCT: extrairePCT(texte),
         CT: extraireCT(texte) ||
             extraireFormatCisssInverse(texte, "[0-9>]CHOLESTEROL", "mmol\\/L"),
         TG: extraireTG(texte),
@@ -2269,7 +2279,7 @@ function formaterDVE(val) {
 function formaterResultat(date, valeurs, heure, cultureComplete) {
     const groupes = [
         ["Hb", "Plaq", "VGM", "DVE", "INR", "Créat", "DFGe", "Urée", "Na", "K", "Cl", "Osmolalité sérique", "Osmolalité urinaire", "NaUrinaire", "HCO3", "Pi", "Mg", "Alb", "Pré-alb", "Ca", "Ca (corr.)", "Ca ion. pH", "Ca ionisé", "CTX", "PTH","ALT", "AST",],
-        ["BiliT", "CK", "GGT", "LDH", "PAL", "Lipase", "CRP"],
+        ["BiliT", "CK", "GGT", "LDH", "PAL", "Lipase", "CRP", "PCT"],
         ["CT", "TG", "HDL", "LDL", "non-HDL", "ApoB", "LpA"],
         ["TSH", "FSH", "LH", "T4L", "T3T", "Prolactine", "TestT", "DHEA", "Estradiol", "SHBG","Ferritine", "TSAT","Vit. B12", "Vit. D","HbA1c", "Fructosamine", "RAC", "Proteinurie","Ac. urique","BNP", "NTproBNP", "PSA", "Li"],
         ["Syphilis"]
