@@ -1306,6 +1306,10 @@ function extraireCRP(texte) {
     m = texte.match(/\bCRP\b\s*(?:[HLBA]\s*)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s*mg\/L/i);
     if (m) return normaliserValeur(m[1]);
 
+    // Format CISSS-CA (Lévis) : "PROTEINE C REACTIVE 124,2 H 0,0-5,0 mg/L L"
+    m = texte.match(/Prot[ée]ine C r[ée]active\s+(?:[HLBA]\s+)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s*(?:[HLBA]\s+)?(?:[<>]=?\s*)?[\d,.]+\s*-\s*[\d,.]+\s*mg\/L/i);
+    if (m) return normaliserValeur(m[1]);
+
     // Format CISSS-CA : "Protéine C réactive; Sensibilité élevée ... 117,3 AH mg/L"
     m = texte.match(/Prot[ée]ine C r[ée]active;?\s*Sensibilit[ée][\s\S]{0,80}?(?:^|\s)([<>]?(?:=)?\d+(?:[.,]\d+)?)\s*(?:AH|AB|AN|CH|CB|XH|XB)?\s*mg\/L/im);
     if (m) return normaliserValeur(m[1]);
@@ -2124,9 +2128,18 @@ function extraireOsmolaliteUrinaire(texte) {
 function processRapport(texte) {
     texte = (texte || "").replace(/\b(AB|AH|AN|CB|CH|XB|XH)\b/g, "");
 
+    // Format DCML : "Sodium; Ur 93 27 - 147 mmol/L" et
+    // "Osmolalité; Ur 50 - 1200 mOsm/kg\nH2O\n424 2026/..." (valeurs urinaires,
+    // à retirer du texte pour ne pas les confondre avec le sodium sérique).
+    const naUrinaireDcml = (texte.match(/Sodium\s*;\s*Ur\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)/i) || [])[1] || null;
+    const osmUrinaireDcml = (texte.match(/Osmolalit[ée]\s*;\s*Ur\s+[\d,.]+\s*-\s*[\d,.]+\s*mOsm\/kg\s*H2O\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)/i) || [])[1] || null;
+    texte = texte
+        .replace(/Sodium\s*;\s*Ur[^\n]*/gi, "")
+        .replace(/Osmolalit[ée]\s*;\s*Ur[^\n]*(?:\n\s*H2O)?(?:\n\s*[<>]?\d+(?:[.,]\d+)?\s+20\d{2}\/[^\n]*)?/gi, "");
+
     const sectionUrine = separerSectionUrine(texte);
-    const naUrinaire = extraireNaUrinaire(sectionUrine.urine);
-    const osmolaliteUrinaire = extraireOsmolaliteUrinaire(texte);
+    const naUrinaire = extraireNaUrinaire(sectionUrine.urine) || (naUrinaireDcml && normaliserValeur(naUrinaireDcml));
+    const osmolaliteUrinaire = extraireOsmolaliteUrinaire(texte) || (osmUrinaireDcml && normaliserValeur(osmUrinaireDcml));
     texte = sectionUrine.reste;
 
     // Supprime les flags B/H/A isolés qui suivent une valeur numérique (ex: "539 H 37-300" → "539 37-300")
