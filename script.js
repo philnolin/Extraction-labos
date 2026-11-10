@@ -2106,7 +2106,7 @@ function separerSectionUrine(texte) {
             dansUrine = true;
             continue;
         }
-        if (dansUrine && /^\s*(?:BIOCHIMIE|H[ÉE]MATOLOGIE|MICROBIOLOGIE|COAGULATION|S[ÉE]ROLOGIE|Sp[ée]cimen)\b|^\s*L\s*=\s*L[ée]vis/i.test(ligne)) {
+        if (dansUrine && /^\s*(?:BIOCHIMIE|HORMONOLOGIE|H[ÉE]MATOLOGIE|MICROBIOLOGIE|COAGULATION|S[ÉE]ROLOGIE|Sp[ée]cimen)\b|^\s*L\s*=\s*L[ée]vis/i.test(ligne)) {
             dansUrine = false;
         }
         (dansUrine ? urine : reste).push(ligne);
@@ -2137,6 +2137,8 @@ function processRapport(texte) {
         .replace(/Sodium\s*;\s*Ur[^\n]*/gi, "")
         .replace(/Osmolalit[ée]\s*;\s*Ur[^\n]*(?:\n\s*H2O)?(?:\n\s*[<>]?\d+(?:[.,]\d+)?\s+20\d{2}\/[^\n]*)?/gi, "");
 
+    // Le RAC se trouve dans la section « BIOCHIMIE URINE » : on le lit avant de la retirer.
+    const racSectionUrine = extraireRAC(texte);
     const sectionUrine = separerSectionUrine(texte);
     const naUrinaire = extraireNaUrinaire(sectionUrine.urine) || (naUrinaireDcml && normaliserValeur(naUrinaireDcml));
     const osmolaliteUrinaire = extraireOsmolaliteUrinaire(texte) || (osmUrinaireDcml && normaliserValeur(osmUrinaireDcml));
@@ -2236,7 +2238,7 @@ LpA: extraireLpA(texte),
             const a1cEstime = fructosamineVersHbA1c(fruc);
             return a1cEstime ? `${fruc} (HbA1c ${a1cEstime})` : fruc;
         })(),
-        RAC: extraireRAC(texte),
+        RAC: extraireRAC(texte) || racSectionUrine,
               Proteinurie: extraireProteinurie(texte),
         TSAT: extraireTSAT(texte),
         Ferritine: extraireFerritine(texte),
