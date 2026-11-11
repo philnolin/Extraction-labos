@@ -470,13 +470,13 @@ function extraireLpA(texte) {
     m = texte.match(/Lipoprot[ée]ines?\s*a\s*\(Lpa\)\s*nmol\/L\s+[A-Z]{2,}\d{2,}(?:AB|AH|AN|CB|CH|XB|XH)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+20\d{2}\//i);
     if (m) return normaliserValeur(m[1]);
 
-    m = texte.match(/(?:Lipoprot[ée]ines?\s*a\s*\(Lpa\)|Lp\s*\(a\))\s*(?:[HBA]\s*)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+(?:<=|>=)?\s*[\d,. -]+\s*nmol\/L\b/i);
+    m = texte.match(/(?:Lipoprot[ée]ines?\s*a\s*\(Lpa\)|Lipoprot[ée]ines?\s*\(a\)|Lp\s*\(a\))\s*(?:[HBA]\s*)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+(?:<=|>=)?\s*[\d,. -]+\s*nmol\/L\b/i);
     if (m) return normaliserValeur(m[1]);
 
-    m = texte.match(/(?:Lipoprot[ée]ines?\s*a\s*\(Lpa\)|Lp\s*\(a\))\s*(?:[HBA]\s*)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s*nmol\/L\b/i);
+    m = texte.match(/(?:Lipoprot[ée]ines?\s*a\s*\(Lpa\)|Lipoprot[ée]ines?\s*\(a\)|Lp\s*\(a\))\s*(?:[HBA]\s*)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s*nmol\/L\b/i);
     if (m) return normaliserValeur(m[1]);
 
-    return extraireFormatCisssInverse(texte, "Lipoprot[ée]ines?\\s*a\\s*\\(Lpa\\)|Lp\\s*\\(a\\)", "nmol\\/L");
+    return extraireFormatCisssInverse(texte, "Lipoprot[ée]ines?\\s*a\\s*\\(Lpa\\)|Lipoprot[ée]ines?\\s*\\(a\\)|Lp\\s*\\(a\\)", "nmol\\/L");
 }
 
 function extraireValproate(texte) {
@@ -2218,7 +2218,7 @@ VGM: extraireVGM(texte),
         LDL: extraireLDL(texte),
         "non-HDL": extraireNonHDL(texte),
         ApoB: extraireFormatCisssInverse(texte, "APOLIPOPROTEINES?\\s+B", "g\\/L") || extraireApoB(texte),
-LpA: extraireLpA(texte),
+        "Lp(a)": extraireLpA(texte),
         TSH: extraireFormatCisssInverse(texte, "TSH", "mU[I]?\\/L") ||
             extraireParUnite(texte, "(?:Thyréostimuline\\s*\\(TSH\\)|TSH)", "mUI\\/L", /TSH\s+(\d+[.,]\d+|\d+)\s/i, fb("(?:Thyréostimuline\\s*\\(TSH\\)|TSH)", "mUI\\/L")) ||
             extraireFormatCompactRef(texte, "(?:Thyréostimuline\\s*\\(TSH\\)|TSH)", "mUI\\/L"),
@@ -2295,7 +2295,7 @@ function formaterResultat(date, valeurs, heure, cultureComplete) {
     const groupes = [
         ["Hb", "Plaq", "VGM", "DVE", "INR", "Créat", "DFGe", "Urée", "Na", "K", "Cl", "Osmolalité sérique", "Osmolalité urinaire", "NaUrinaire", "HCO3", "Pi", "Mg", "Alb", "Pré-alb", "Ca", "Ca (corr.)", "Ca ion. pH", "Ca ionisé", "CTX", "PTH","ALT", "AST",],
         ["BiliT", "CK", "GGT", "LDH", "PAL", "Lipase", "CRP", "PCT"],
-        ["CT", "TG", "HDL", "LDL", "non-HDL", "ApoB", "LpA"],
+        ["CT", "TG", "HDL", "LDL", "non-HDL", "ApoB", "Lp(a)"],
         ["TSH", "FSH", "LH", "T4L", "T3T", "Prolactine", "TestT", "DHEA", "Estradiol", "SHBG","Ferritine", "TSAT","Vit. B12", "Vit. D","HbA1c", "Fructosamine", "RAC", "Proteinurie","Ac. urique","BNP", "NTproBNP", "PSA", "Li"],
         ["Syphilis"]
     ];
