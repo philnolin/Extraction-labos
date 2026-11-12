@@ -182,7 +182,7 @@ function extraireFormatRefCodeValeur(texte, paramRegex, uniteRegex) {
         paramRegex +
         ")\\s+(?:" +
         uniteRegex +
-        ")\\s+[A-Z]{2,}\\d{4}(?:AB|AH|AN|CB|CH|XB|XH)?(" +
+        ")\\s+(?:[A-Z]{2,}\\d{4}|\\d{4})(?:AB|AH|AN|CB|CH|XB|XH)?(" +
         "[<>]?(?:=)?\\d+(?:[.,]\\d+)?" +
         ")\\s+20\\d{2}\\/",
         "i"
@@ -261,7 +261,7 @@ function extraireDFGe(texte) {
 }
 function extraireHb(texte) {
     const patterns = [
-        /(?:^|\n)\s*(?:[<>]=?\s*)?\d+(?:[.,]\d+)?\s*-\s*(?:[<>]=?\s*)?\d+(?:[.,]\d+)?Hb\s+g\/L\s+[A-Z]{2,}\d{3,4}(?:AB|AH|AN|CB|CH|XB|XH)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+20\d{2}\//i,
+        /(?:^|\n)\s*(?:[<>]=?\s*)?\d+(?:[.,]\d+)?\s*-\s*(?:[<>]=?\s*)?\d+(?:[.,]\d+)?Hb\s+g\/L\s+(?:[A-Z]{2,}\d{3,4}|\d{4})(?:AB|AH|AN|CB|CH|XB|XH)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+20\d{2}\//i,
         /(?<!moyenne )\bHb\b\s*(?:[HLB]\s*)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s*g\/L\b/i,
         /H[ée]moglobine\s*(?:[HLB]\s*)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s*g\/L\b/i,
         /(?<!moyenne )\bHb\b[^\n]*?AUTO[VHBCAX]*\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)/i,
@@ -304,6 +304,8 @@ function extrairePlaquettes(texte) {
         extraire(texte, /Plaq\.?\s+(\d+)\s+\d+(?:[.,]\d+)?\s*-\s*\d+(?:[.,]\d+)?\s+10\*9\/L/i) ||
         extraire(texte, /^Plaquettes\s+(\d+)\s+\d+-\d+/im) ||
         extraire(texte, /(\d+)\s+\d+-\d+\s*x\s*10\^9\/L\s+L\s*$/im) ||
+        // Format Hôtel-Dieu de Lévis : code tech numérique collé à la valeur ("Plaq 10*9/L 6000279 2026/...")
+        extraire(texte, /Plaq\s+10\*9\/L\s+(?:[A-Z]{2,})?\d{4}(?:AB|AH|AN|CB|CH|XB|XH)?(\d+)\s+20\d{2}\//i) ||
         extraire(texte, /Plaq\s+10\*9\/L.*?\s*(\d+)/i);
 }
 
@@ -312,7 +314,7 @@ function extraireVGM(texte) {
         // Format avec plage de référence collée avant VGM (ex: "80,0 - 100,0VGM fL AUTOV96,9")
         /(?:^|\n)\s*(?:[<>]=?\s*)?\d+(?:[.,]\d+)?\s*-\s*(?:[<>]=?\s*)?\d+(?:[.,]\d+)?\s*VGM\s+fL\s+AUTO[VHBCAX]*\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)/i,
         // Format avec plage + code labo
-        /(?:^|\n)\s*(?:[<>]=?\s*)?\d+(?:[.,]\d+)?\s*-\s*(?:[<>]=?\s*)?\d+(?:[.,]\d+)?VGM\s+fL\s+[A-Z]{2,}\d{3,4}(?:AB|AH|AN|CB|CH|XB|XH)?(\d{2,3}(?:[.,]\d+)?)\s+20\d{2}\//i,
+        /(?:^|\n)\s*(?:[<>]=?\s*)?\d+(?:[.,]\d+)?\s*-\s*(?:[<>]=?\s*)?\d+(?:[.,]\d+)?VGM\s+fL\s+(?:[A-Z]{2,}\d{3,4}|\d{4})(?:AB|AH|AN|CB|CH|XB|XH)?(\d{2,3}(?:[.,]\d+)?)\s+20\d{2}\//i,
         /\bVGM\b\s*(?:[HLBA]\s*)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s*fL\b/i,
         /Volume glob\.\s*moyen\s*(?:[HLBA]\s*)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s*fL\b/i,
         /\bVGM\b[^\n]*?AUTO[VHBCAX]*\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)/i
@@ -405,7 +407,12 @@ function extraireHemolysePotassium(texte) {
     if (match && match[2]) return match[2];
 
     match = zoneRecherche.match(/h[ée]molyse\s*(\d)\+/i);
-    if (!match || !match[1]) return "";
+    if (!match || !match[1]) {
+        // Format Hôtel-Dieu de Lévis : commentaire sans niveau sur la ligne précédant "Potassium"
+        // ex: "Résultat sous réserve, interférence due à l'hémolyse\nPotassium mmol/L ..."
+        if (/h[ée]molys[^\n]*\n(?:[^\n]*\n)?\s*Potassium/i.test(texte)) return " (hémolysé)";
+        return "";
+    }
 
     const niveau = parseInt(match[1], 10);
     if (Number.isNaN(niveau) || niveau <= 0) return "";
@@ -416,6 +423,9 @@ function extraireCT(texte) {
        // Format CISSS : "<= 6,00Cholestérol mmol/L CAT08824,01 2026/..." (code labo + valeur collée)
     let mCisss = texte.match(/Cholest[ée]rol\s+mmol\/L\s+[A-Z]{2,}\d{4}(?:AB|AH|AN|CB|CH|XB|XH)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+20\d{2}\//i);
     if (mCisss) return normaliserValeur(mCisss[1]);
+    // Format Hôtel-Dieu de Lévis sans unité : "<6,20Cholestérol AUTOV2,18 2026/..."
+    let mSansUnite = texte.match(/Cholest[ée]rol\s+AUTO[VHBCAX\/]*\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+20\d{2}\//i);
+    if (mSansUnite) return normaliserValeur(mSansUnite[1]);
     let m = texte.match(/^\s*CHOLESTEROL\s+([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+(?:[<>]?\s*[\d,. -]+)?\s*mmol\/L/im);
     if (m) return normaliserValeur(m[1]);
 
@@ -1036,6 +1046,10 @@ function extraireVitD(texte) {
     if (match && match[1]) return normaliserValeur(match[1]);
 
     match = texte.match(/Vitamine D 25\(OH\)[^\d-]*([\d,.]+)\s*nmol\/L/i);
+    if (match && match[1]) return normaliserValeur(match[1]);
+
+    // Format Hôtel-Dieu de Lévis : "Vitamine D 25 OH nmol/L IAT010548 2026/..." (code tech + valeur collée)
+    match = texte.match(/Vitamine\s*D\s*25\s*(?:\(\s*OH\s*\)|OH)\s+nmol\/L\s+(?:[A-Z]{2,}\d{4}|\d{4})(?:AB|AH|AN|CB|CH|XB|XH)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+20\d{2}\//i);
     if (match && match[1]) return normaliserValeur(match[1]);
 
     return extractValueNearAnchor(texte, /25\s*OH[- ]?VITAMINE\s*D|Vitamine\s*D\s*25/i, 10);
@@ -2219,7 +2233,9 @@ VGM: extraireVGM(texte),
         "non-HDL": extraireNonHDL(texte),
         ApoB: extraireFormatCisssInverse(texte, "APOLIPOPROTEINES?\\s+B", "g\\/L") || extraireApoB(texte),
         "Lp(a)": extraireLpA(texte),
-        TSH: extraireFormatCisssInverse(texte, "TSH", "mU[I]?\\/L") ||
+        // Format Hôtel-Dieu de Lévis : "TSH mU/L IAT01050,76 2026/..." (code tech + valeur collée)
+        TSH: extraire(texte, /\bTSH\s+mUI?\/L\s+(?:AUTO[VHBCAX\/]*|[A-Z]{2,}\d{4}|\d{4})(?:AB|AH|AN|CB|CH|XB|XH)?\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+20\d{2}\//i) ||
+            extraireFormatCisssInverse(texte, "TSH", "mU[I]?\\/L") ||
             extraireParUnite(texte, "(?:Thyréostimuline\\s*\\(TSH\\)|TSH)", "mUI\\/L", /TSH\s+(\d+[.,]\d+|\d+)\s/i, fb("(?:Thyréostimuline\\s*\\(TSH\\)|TSH)", "mUI\\/L")) ||
             extraireFormatCompactRef(texte, "(?:Thyréostimuline\\s*\\(TSH\\)|TSH)", "mUI\\/L"),
         FSH: extractValue(texte, /\bFSH\s+(?:[HLBA]\s*)?([<>]?(?:=)?\d+(?:[.,]\d+)?)\s+UI\/L/i),
