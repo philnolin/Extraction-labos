@@ -1420,7 +1420,7 @@ function extraireNonHDL(texte) {
 
 function extrairePSA(texte) {
     return extraireFormatCisssInverse(texte, "PSA", "ug\\/L") ||
-        extractValue(texte, /PSA\s+ug\/L\s+AUTO[VHBCAX]*\s*([\d,.]+)/i) ||
+        extractValue(texte, /PSA\s+ug\/L\s+AUTO[VHBCAX]*\s*([<>]?=?\s*[\d,.]+)/i) ||
         extractValue(texte, /PSA\s+(\d+[.,]\d+|\d+)\s*ug\/L/i) ||
         extractValue(texte, /PSA\s+(\d+[.,]\d+|\d+)\s/i);
 }
