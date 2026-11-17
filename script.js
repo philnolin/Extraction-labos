@@ -1418,6 +1418,17 @@ function extraireNonHDL(texte) {
     if (mCisss) return normaliserValeur(mCisss[1]);
 }
 
+/* RSOSi : "Sang occulte; Selles AUTOVNégatif 2026/05/01 15:40 EA200"
+   (ou valeur précédée d'une ligne, ou "Positif"). Négatif -> "-", Positif -> "+". */
+function extraireRSOSi(texte) {
+    const m = texte.match(/Sang\s+occulte[^\r\n]*?(?:AUTO[VHBCAX\/]*|V\/AUT)?\s*(N[ée]gatif|Positif|Non\s+concluant|Ind[ée]termin[ée]e?)/i);
+    if (!m) return null;
+    const r = m[1].trim();
+    if (/^n[ée]gatif$/i.test(r)) return "-";
+    if (/^positif$/i.test(r)) return "+";
+    return r;
+}
+
 function extrairePSA(texte) {
     return extraireFormatCisssInverse(texte, "PSA", "ug\\/L") ||
         extractValue(texte, /PSA\s+ug\/L\s+AUTO[VHBCAX]*\s*([<>]?=?\s*[\d,.]+)/i) ||
@@ -2267,6 +2278,7 @@ VGM: extraireVGM(texte),
         Syphilis: extraireSyphilis(texte),
         PTH: extrairePTH(texte),
         PSA: extrairePSA(texte),
+        RSOSi: extraireRSOSi(texte),
                 Li: extraireLiStrict(texte),
         "Osmolalité sérique": extraireOsmolalite(texte),
         "Osmolalité urinaire": osmolaliteUrinaire,
@@ -2313,7 +2325,7 @@ function formaterResultat(date, valeurs, heure, cultureComplete) {
         ["BiliT", "CK", "GGT", "LDH", "PAL", "Lipase", "CRP", "PCT"],
         ["CT", "TG", "HDL", "LDL", "non-HDL", "ApoB", "Lp(a)"],
         ["TSH", "FSH", "LH", "T4L", "T3T", "Prolactine", "TestT", "DHEA", "Estradiol", "SHBG","Ferritine", "TSAT","Vit. B12", "Vit. D","HbA1c", "Fructosamine", "RAC", "Proteinurie","Ac. urique","BNP", "NTproBNP", "PSA", "Li"],
-        ["Syphilis"]
+        ["Syphilis", "RSOSi"]
     ];
 
     const resultats = groupes
