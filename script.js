@@ -224,6 +224,10 @@ function extraireFormatCodeValeurDate(texte, paramRegex, uniteRegex) {
 }
 
 function extraireDFGe(texte) {
+    // Résultat non disponible ("DFG Estimé/1,73m2 (prédite) au labo") : ne pas
+    // confondre le "1,73" de l'unité avec une valeur.
+    if (/DFG\s*Estim[ée]\/1[.,]73m2\s*\(pr[ée]dite\)\s*au\s+labo/i.test(texte)) return null;
+
     // Format CISSS-Chaudière-Appalaches : valeur collée après "mL/min/1,73m2"
     // ex: "Lml/min/1,73m261 >59DFGe (CKD-EPI)" → capture 61
     let mCisss = texte.match(/mL\/min\/1[.,]73m2\s*([<>]?(?:=)?\d+(?:[.,]\d+)?)/i);
